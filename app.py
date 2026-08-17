@@ -3,177 +3,74 @@ import io
 import numpy as np
 from PIL import Image
 from flask import Flask, request, jsonify
-import tflite_runtime.interpreter as tflite
+
+# ✅ TensorFlow ကိုသုံးပါ (tflite_runtime အစား)
+import tensorflow as tf
 
 app = Flask(__name__)
 
-# ==========================================
-# 🔐 ENVIRONMENT VARIABLES
-# ==========================================
-MODEL_PATH = os.environ.get('MODEL_PATH', 'my_custom_plant_model.tflite')
-CONFIDENCE_THRESHOLD = float(os.environ.get('CONFIDENCE_THRESHOLD', 0.55))
+MODEL_PATH = 'my_custom_plant_model.tflite'
 
-print("=" * 50)
-print("🚀 Starting Plant Disease Detection API...")
-print(f"   MODEL_PATH: {MODEL_PATH}")
-print(f"   CONFIDENCE_THRESHOLD: {CONFIDENCE_THRESHOLD}")
-print("=" * 50)
-
-# ==========================================
-# 📦 LOAD TFLITE MODEL
-# ==========================================
-
+# TFLite Interpreter ကို TensorFlow ကနေ ခေါ်ပါ
 if os.path.exists(MODEL_PATH):
-    interpreter = tflite.Interpreter(model_path=MODEL_PATH)
+    interpreter = tf.lite.Interpreter(model_path=MODEL_PATH)
     interpreter.allocate_tensors()
     input_details = interpreter.get_input_details()
     output_details = interpreter.get_output_details()
-    print("✅ TFLite AI Model Loaded Successfully!")
+    print("🚀 TFLite AI Model Loaded Successfully with TensorFlow!")
 else:
     raise FileNotFoundError(f"Error: {MODEL_PATH} ဖိုင်အား ရှာမတွေ့ပါ။")
 
-# ==========================================
-# 🏷️ CLASS NAMES (၃၃ မျိုး - ခင်ဗျားရဲ့ အုပ်စုအသစ်)
-# ==========================================
-
 class_names = [
-    'Alternaria_D',
-    'Anthracnose - Colletotrichum',
-    'Bacterial_spot',
-    'Bacterialblight',
-    'Blast',
-    'Botrytis Leaf Blight',
-    'Brownspot',
-    'Bulb Rot',
-    'Bulb_blight-D',
-    'Caterpillar-P',
-    'Downy mildew',
-    'Early_blight',
-    'Fusarium-D',
-    'Healthy',
-    'Iris yellow virus_augment',
-    'Late_blight',
-    'Leaf curl',
-    'Leaf spot',
-    'Leaf_Mold',
-    'Mosaic_virus',
-    'Purple blotch',
-    'Rust',
-    'Septoria_leaf_spot',
-    'Stemphylium Leaf Blight',
-    'Target_Spot',
-    'Tungro',
-    'Two-spotted_spider_mite',
-    'Virosis-D',
-    'Whitefly',
-    'Xanthomonas Leaf Blight',
-    'Yellow_Leaf_Curl_Virus',
-    'Yellowish',
-    'unknown'
+    'Alternaria_D', 'Anthracnose - Colletotrichum', 'Bacterialblight', 'Blast', 
+    'Botrytis Leaf Blight', 'Brownspot', 'Bulb Rot', 'Bulb_blight-D', 'Caterpillar-P', 
+    'Downy mildew', 'Fusarium-D', 'Healthy leaves', 'Iris yellow virus_augment', 
+    'Purple blotch', 'Rust', 'Tomato___Bacterial_spot', 'Tomato___Early_blight', 
+    'Tomato___Late_blight', 'Tomato___Leaf_Mold', 'Tomato___Septoria_leaf_spot', 
+    'Tomato___Spider_mites Two-spotted_spider_mite', 'Tomato___Target_Spot', 
+    'Tomato___Tomato_Yellow_Leaf_Curl_Virus', 'Tomato___Tomato_mosaic_virus', 
+    'Tomato___healthy', 'Tungro', 'Virosis-D', 'Xanthomonas Leaf Blight', 
+    'healthy', 'leaf curl', 'leaf spot', 'non_plant', 'stemphylium Leaf Blight', 
+    'whitefly', 'yellowish'
 ]
-
-print(f"✅ Loaded {len(class_names)} classes")
-
-# ==========================================
-# 🌐 ROUTES
-# ==========================================
 
 @app.route('/predict', methods=['POST'])
 def predict():
     if 'file' not in request.files:
-        return jsonify({
-            'success': False, 
-            'disease_name': '', 
-            'error': 'No file uploaded.'
-        }), 400
-    
+        return jsonify({'success': False, 'disease_name': '', 'error': 'No file uploaded.'}), 400
     file = request.files['file']
     
     try:
-        # ၁။ ပုံကိုဖတ်ခြင်း
         img_bytes = file.read()
         img = Image.open(io.BytesIO(img_bytes)).convert('RGB').resize((224, 224))
         
-        # ၂။ Preprocessing
+        # Preprocessing
         x = np.array(img, dtype=np.float32) / 255.0
         x = np.expand_dims(x, axis=0)
         
-        # ၃။ TFLite Inference
+        # TFLite Inference
         interpreter.set_tensor(input_details[0]['index'], x)
         interpreter.invoke()
         predictions = interpreter.get_tensor(output_details[0]['index'])
         
-        # ၄။ ရလဒ်ကိုထုတ်ယူခြင်း
         predicted_class_idx = np.argmax(predictions[0])
         confidence = float(np.max(predictions[0]))
         predicted_name = class_names[predicted_class_idx]
-        
-        # ၅။ Unknown (non_plant) ဖြစ်နေရင်
-        if predicted_name == 'unknown':
-            return jsonify({
-                'success': False, 
-                'disease_name': 'Unknown', 
-                'confidence': round(confidence * 100, 2),
-                'error': 'ဤဓာတ်ပုံသည် အရွက်ပုံမဟုတ်ပါ။ ကျေးဇူးပြု၍ အရွက်ပုံကိုသာ ရိုက်ကူးပါ။'
-            })
-        
-        # ၆။ Confidence နည်းနေရင်
-        if confidence < CONFIDENCE_THRESHOLD:
-            return jsonify({
-                'success': False, 
-                'disease_name': '', 
-                'confidence': round(confidence * 100, 2),
-                'error': f'AI မှ သေချာစွာ ခွဲခြားမရပါ။ (Confidence: {round(confidence * 100, 2)}%)'
-            })
-        
-        # ၇။ ကျန်းမာတဲ့အပင်ဖြစ်နေရင်
-        if predicted_name == 'Healthy':
-            return jsonify({
-                'success': True,
-                'disease_name': 'Healthy',
-                'confidence': round(confidence * 100, 2),
-                'error': '',
-                'message': ' ဤအပင်သည် ကျန်းမာပါသည်။ ရောဂါမတွေ့ရပါ။'
-            })
-        
-        # ၈။ ရောဂါရှိနေရင် (ပုံမှန်အုပ်စု)
+
+        if predicted_name == 'non_plant':
+            return jsonify({'success': False, 'disease_name': 'Unknown', 'error': 'ဓာတ်ပုံသည် အပင်ပုံ မဟုတ်ပါဗျာ။'})
+
+        if confidence < 0.55:
+            return jsonify({'success': False, 'disease_name': '', 'error': 'AI မှ သေချာစွာ ခွဲခြားမရပါ။'})
+
         return jsonify({
             'success': True,
-            'disease_name': predicted_name,
+            'disease_name': predicted_name, 
             'confidence': round(confidence * 100, 2),
-            'error': '',
-            'message': f'⚠️ ဤအပင်တွင် "{predicted_name}" ရောဂါ တွေ့ရှိရပါသည်။'
+            'error': ''
         })
-        
     except Exception as e:
-        return jsonify({
-            'success': False, 
-            'disease_name': '', 
-            'error': f'System Error: {str(e)}'
-        }), 500
-
-@app.route('/health', methods=['GET'])
-def health():
-    """Health Check Endpoint"""
-    return jsonify({
-        'status': 'healthy',
-        'model_classes': len(class_names),
-        'total_classes': len(class_names)
-    })
-
-@app.route('/', methods=['GET'])
-def home():
-    """Home Page"""
-    return jsonify({
-        'name': 'Plant Disease Detection API',
-        'version': '1.0.0',
-        'model_classes': len(class_names),
-        'endpoints': {
-            '/predict': 'POST - Upload image for prediction',
-            '/health': 'GET - Check API health',
-            '/': 'GET - API Info'
-        }
-    })
+        return jsonify({'success': False, 'disease_name': '', 'error': str(e)}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
