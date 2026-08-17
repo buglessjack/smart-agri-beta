@@ -3,23 +3,19 @@ import io
 import numpy as np
 from PIL import Image
 from flask import Flask, request, jsonify
-
-# ✅ TensorFlow ကိုသုံးပါ (tflite_runtime အစား)
-import tensorflow as tf
+import tflite_runtime.interpreter as tflite  # Lightweight inference engine
 
 app = Flask(__name__)
-
 MODEL_PATH = 'my_custom_plant_model.tflite'
 
-# TFLite Interpreter ကို TensorFlow ကနေ ခေါ်ပါ
 if os.path.exists(MODEL_PATH):
-    interpreter = tf.lite.Interpreter(model_path=MODEL_PATH)
+    interpreter = tflite.Interpreter(model_path=MODEL_PATH)
     interpreter.allocate_tensors()
     input_details = interpreter.get_input_details()
     output_details = interpreter.get_output_details()
-    print("🚀 TFLite AI Model Loaded Successfully with TensorFlow!")
+    print("🚀 TFLite AI Model Loaded Successfully!")
 else:
-    raise FileNotFoundError(f"Error: {MODEL_PATH} ဖိုင်အား ရှာမတွေ့ပါ။")
+    raise FileNotFoundError(f"Error: {MODEL_PATH} file not found.")
 
 class_names = [
     'Alternaria_D', 'Anthracnose - Colletotrichum', 'Bacterialblight', 'Blast', 
