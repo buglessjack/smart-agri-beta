@@ -1,5 +1,5 @@
-Flask==3.0.2
-tensorflow==2.13.0
+Flask==3.0.0
+gunicorn==21.2.0
 Pillow==10.2.0
 numpy==1.26.4
-gunicorn==21.2.0
+tflite-runtime==2.14.0
