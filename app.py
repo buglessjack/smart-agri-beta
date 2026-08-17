@@ -1,4 +1,7 @@
 import os
+# TensorFlow warning log များကို ဖျောက်ထားခြင်း
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+
 import io
 import numpy as np
 from PIL import Image
@@ -87,15 +90,15 @@ def predict():
 
         # unknown ဖြစ်ပါက
         if predicted_name == 'unknown':
-            return jsonify({'success': False, 'disease_name': 'Unknown', 'error': 'ဓာတ်ပုံသည် အပင်ပုံ မဟုတ်ပါဗျာ။'})
+            return jsonify({'success': False, 'disease_name': 'Unknown', 'error': 'တင်သ္ငင်းထားသောဓာတ်ပုံသည် အပင်၊အရွက်ပုံ မဟုတ်သောကြောင့် ရောဂါရှာဖွေ၍ မရပါ။ '})
 
         # Confidence Threshold စစ်ဆေးခြင်း
         if confidence < 0.55:
-            return jsonify({'success': False, 'disease_name': '', 'error': 'AI မှ သေချာစွာ ခွဲခြားမရပါ။'})
+            return jsonify({'success': False, 'disease_name': '', 'error': 'သေချာစွာ ခွဲခြားမရပါ။ ကျေးဇူးပြု၍ ရှင်းလင်းသော ပုံအား တင်သွင်းပါ။'})
 
-        # 💡 Healthy သို့မဟုတ် healthy ဖြစ်နေပါက disease_name ကို "health" ဟု ပြောင်းလဲပေးခြင်း
+       
         if predicted_name.lower() == 'healthy':
-            predicted_name = 'health'
+            predicted_name = 'Healthy Leaf'
 
         return jsonify({
             'success': True,
@@ -106,12 +109,11 @@ def predict():
     except Exception as e:
         return jsonify({'success': False, 'disease_name': '', 'error': str(e)}), 500
 
-
 @app.route('/', methods=['GET'])
 def home():
     return jsonify({
         'status': 'online',
-        'message': 'Smart Agri AI API is running successfully!'
+        'message': 'Smart Agri API is running successfully!'
     }), 200
 
 if __name__ == '__main__':
