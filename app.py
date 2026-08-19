@@ -90,7 +90,7 @@ def predict():
 
         # unknown ဖြစ်ပါက
         if predicted_name == 'unknown':
-            return jsonify({'success': False, 'disease_name': 'Unknown', 'error': 'တင်သ္ငင်းထားသောဓာတ်ပုံသည် အပင်၊အရွက်ပုံ မဟုတ်သောကြောင့် ရောဂါရှာဖွေ၍ မရပါ။ '})
+            return jsonify({'success': False, 'disease_name': 'Unknown', 'error': ' တင်သွင်းထားသောဓာတ်ပုံသည် အပင်၊အရွက်ပုံ မဟုတ်သောကြောင့် ရောဂါရှာဖွေ၍ မရပါ။ '})
 
         # Confidence Threshold စစ်ဆေးခြင်း
         if confidence < 0.55:
